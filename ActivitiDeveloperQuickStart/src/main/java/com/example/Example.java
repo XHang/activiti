@@ -13,6 +13,8 @@ import org.activiti.engine.ProcessEngines;
 public class Example {
 	public static void main(String[] args) {
 		ProcessEngine processEngine =ProcessEngines.getDefaultProcessEngine();
-		System.out.println(processEngine.getName());
+		System.out.println("启动引擎");
+		ProcessEngines.destroy();
+		System.out.println("关闭引擎");
 	}
 }

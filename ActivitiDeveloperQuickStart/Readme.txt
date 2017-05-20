@@ -186,9 +186,75 @@ JNDI数据库的配置
 					2：为你的数据库选择合适的驱动程序添加到classpath路径下，升级你项目引用的Activiti类库。并将数据库配置为，指向拥有老版本表的数据库
 					3：运行你的Activiti，大概就是先构造一个引擎实例吧，这样就可以升级了。具体的文档说的不是很清楚
 					4：作为替代，你也可以在官网下载升级的数据库脚本，然后运行it
-				9：作业执行和异步执行器
-					  从 5.17.0版本开始，Activiti添加了一个异步执行器，Async执行器是在Activiti Engine中执行异步作业的一种性能更好的数据库友好方式。
-					   因此建议切换到异步执行器。 默认情况下，旧的作业执行器仍然被使用。 
+				9：Job Executor和Async Executor
+					  从 5.17.0版本开始，Activiti添加了一个Async Executor，Async Executor是在Activiti Engine中执行异步作业的一种性能更好的数据库友好方式。
+					   因此建议切换到Async Executor。 默认情况下，旧的Job Executor仍然被使用。 
+									ps：如果你的应用程序在javaee 7下运行，则ManagedJobExecutor和ManagedAsyncJobExecutor可用于让容器管理线程。
+									要启用它们，请在线程工厂作如下配置：
+									用到jndi，忽略。。。
+						Job Executor是用来管理几个线程用来激发定时器（以及异步消息）的组件。
+						在单元测试场景中，使用多个线程很麻烦，因此，api允许通过api查询：ManagementService.createJobQuery
+						并执行作业：ManagementService.executeJob  这样就可以在单元测试中控制作业执行。
+						如果为了避免Job Executor干扰，可以关闭它。
+						<property name="jobExecutorActivate" value="false" />
+						默认情况下，当流程引擎启动时，Job Executor会被激活。
+						AsyncExecutor是一个管理线程池以激发定时器和其他异步任务的组件。
+						默认不启用，建议启用，启用方式如下
+						<property name =“asyncExecutorEnabled”value =“true”/>
+						<property name =“asyncExecutorActivate”value =“true”/>
+						第一个配置是弃用旧的Job Executor，启用新的Async Executor
+						第二个配置是引擎启动时启动Async executor thread pool（不懂。。。）
+				10：邮件配置
+						activiti支持在流程运行过程中间发送电子邮件，这需要一个有效的SMTP邮件服务器配置
+				11：历史配置
+							可选
+							<property name =“history”value =“audit”/>
+				12：在表达式和脚本中公开配置的bean
+						默认情况下，你配置的bena都可以在表达式或者脚本中获取到，不想让他们获取？，配置一下配置文件中beans的一个属性，该属性是一个map
+						可以选择哪些bena可以被公开。公开的bean将以属性指定的名称显示
+						（我倒想知道怎么在表达式或者脚本获取这些bena。。。）
+				13：部署缓冲配置
+						一般情况下，进程定义后都会被缓冲，避免每次进程定义后都去数据库连一遍（干嘛？），而且也是因为进程定义后数据不会改变。
+						默认情况下，这个缓冲没有限制，想限制？补充下面属性
+						<property name="processDefinitionCacheLimit" value="10" />
+						其他的，自己查文档，一般玩不到这里吧。
+				14：Activiti采用slf日志框架
+						默认需要你自己添加日志的实现jar包到classpath.如log4j.
+						请注意：除了添加日志jar包外，还要添加日志和slf的接口jar包
+						如：slf4j-log4j12
+						另：如果不添加任何日志实现jar包，Activiti默认使用NOP记录器，只会记录警告信息！
+				15：映射的诊断上下文：关于日志的，不懂。。。
+				16：Activiti 5.15中引入了一个事件机制。 它允许您在引擎内发生各种事件时收到通知。事件类型有几种：自己查文档去
+						1：可以通过配置添加引擎范围的事件监听器
+								<bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
+   											 ...
+    									<property name="eventListeners">
+		      									<list>
+		         										<bean class="org.activiti.engine.example.MyEventListener" />
+		      									</list>
+    									</property>
+								</bean>
+								
+						2：可以通过api在运行时添加引擎范围内的事件监听器
+						3：可以在特定的进程添加自定义的事件监听器
+								<process id="testEventListeners">
+  									<extensionElements>
+								    <activiti:eventListener class="org.activiti.engine.test.MyEventListener" />
+								    <activiti:eventListener delegateExpression="${testEventListener}" events="JOB_EXECUTION_SUCCESS,JOB_EXECUTION_FAILURE" />
+								  </extensionElements>
+ 									 ...
+								</process>
+								这个是添加两个监听器到流程中，第一个监听器接受任何类型的事件，且只有当作业成功执行或失败时，才会通知 process engine configuration.里面
+								beans属性定义的侦听器的第二个侦听器。
+								其他还有事件的实现类，自己去看
+				呼，配置暂时告一段落，接下里搞代码了。也就是api的使用！
+				1：ProcessEngine可以获得包含工作流/ BPM方法的各种服务。 ProcessEngine和服务对象是线程安全的。
+				2：ProcessEngines.getDefaultProcessEngine（）将首次初始化并构建一个进程引擎，之后总是返回相同的进程引擎。
+						 所有流程引擎的正确创建和关闭可以通过ProcessEngines.init（）和ProcessEngines.destroy（）完成。
+						 ps:getDefaultProcessEngine（）时已经帮你init过了。
+				3：ProcessEngines
+				
+						
 				
 					
 				    
