@@ -140,6 +140,8 @@ JNDI数据库的配置
         	  postgres           jdbc:postgresql://localhost:5432/activiti
         	  db2                   jdbc:db2://localhost:50000/activiti
         	  mssql                 自己查文档去。
+        	  
+        	  血与泪的教训：JDBC连接符千万不要有空格，不然爆的错误让你怀疑人生
         	 6：创建activiti的数据库表
 					其实最简单的方法难道不是把processEngineConfiguration的class属性设置为	org.activiti.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration
 					或者设置databaseSchemaUpdate属性为true，这样程序一启动就帮你检查表存不存在，存在无视，不存在自动创建。
@@ -252,9 +254,128 @@ JNDI数据库的配置
 				2：ProcessEngines.getDefaultProcessEngine（）将首次初始化并构建一个进程引擎，之后总是返回相同的进程引擎。
 						 所有流程引擎的正确创建和关闭可以通过ProcessEngines.init（）和ProcessEngines.destroy（）完成。
 						 ps:getDefaultProcessEngine（）时已经帮你init过了。
-				3：ProcessEngines
+				3：ProcessEngines会自动在classpath里面找activiti.cfg.xml和activiti-context.xml文件。
+					  如果找到activiti.cfg.xml文件,要创建流程引擎需要ProcessEngineConfiguration.createProcessEngineConfigurationFromInputStream(inputStream).buildProcessEngine()
+					  如果找到activiti-context.xml，想获取流程引擎将用Spring的方式获取，怎么获取请参阅Spring教程。
+					  
+					  -----------------各种服务的介绍--------------------
+				4：RepositoryService：这可能是你使用activiti引擎的第一个服务，此服务提供了管理和操作部署和流程定义的操作。
+						流程定义：他是一个流程每个步骤结构和行为的表示。
+						部署：部署可以包含多个流程定义的xml文件（BPMN 2.0 xml）和任何其他资源，一个部署就是Activiti引擎内的打包单元
+								选择部署中包含的内容随你选择？
+						此外，这项服务还允许，
+							1：查询引擎已知的部署和流程定义。   
+							2：暂停和激活部署流程
+							（可以发现，这个包含的基本都是静态资源，什么定义，什么资源的）
+							
+				5:RuntimeService :它处理《开始流程》，定义的新流程实例，要知道，每一个流程定义通常有很多实例运行（什么，同时多个人请假流程不行吗？）
+												 RuntimeService也是用于获取和设置流程实例变量的服务（流程运行时肯定会有许多变量对吧）
+												  Runtimeservice还允许查询流程实例和执行。
+												   Runtimeservice还负责当流程实例等待外部触发器继续执行的操作。
+												   流程实例可以具有多种等待状态，该服务的某些操作可以发给流程示例，以触发流程实例的外部触发器，使之能继续进行流程。
+												   
 				
+				
+				6:TaskService:在Activiti中业务流程定义中的每一个执行节点被称为一个Task，Task都分组在TaskService中，包含
+				查询分配给用户或组的Task
+    			创建新的独立Task。这些是与流程实例无关的Task（纳尼？）
+   				 操作Task分配给哪个用户或哪个用户以某种方式涉及Task
+   				 ?声明并完成Task，声明意味着有人愿意处理该Task，也就意味着该用户将完成该Task
+   				 
+   				7： IdentityService很简单。它允许组和用户的管理（创建，更新，删除，查询，...）
+   				
+   				8：FormService:包含起始表单和任务表单。
+   						起始表单是流程实例启动前向用户显示的表单，任务表单是用户想要填写表单显示的表单，这是可选的，表单不需要嵌入到流程定义中（不懂）
+				
+				9：HistoryService:可以查看Activiti引擎收集的所有历史数据,执行进程时，该服务可以保留很多有关进程数据（这是可配置的）
+					什么数据呢？比如说，流程实例的启动时间，谁做了哪些任务，完成任务需要多久时间，每个流程实例的执行过程等待。。
+					
+				10：ManagementService :一般用不上，这是用于Activiti系统的日常维护。
+				
+				异常部分：一般的异常，没声明却抛出的异常时这个，org.activiti.engine.ActivitiException
+									其他的javadoc都有说明
+									此外还有些异常请参阅官方文档。
+									
+									
+				13:流程定义的xml文档解释：
+				1：根元素是definitions元素，在这个元素中，可以定义多个流程，不建议这么做，会增加维护难度。
+						一个空流程定义如下所示。注意：根元素至少有xmlns和targetNamespace属性。其中targetNamespace用于分辨各类的流程。可以是任何值
+						xmlns也可以是：xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+														xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL
+                 									   http://www.omg.org/spec/BPMN/2.0/20100501/BPMN20.xsd
+						<definitions
+ 								 xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+ 								 xmlns:activiti="http://activiti.org/bpmn"
+  								targetNamespace="Examples">
+  								<process id="myProcess" name="My First Process">
+							     ..
+							    </process>
+						</definitions>
+				2：process元素有两个属性
+						id：必须的，该属性会映射到ProcessDefinition对象的key属性。然后可以通过RuntimeService上的startProcessInstanceByKey来将id所在的流程实例化出来一个。
+						eg:ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("myProcess");
+							 要注意，这个方法和startProcessInstanceById方法不同。byid的id是Activiti引擎在部署流程时生成的id。格式为：key：version(version是什么鬼。。。)
+							 并且只能是64个字符。注意不要溢出了
+						 name此属性可选，并映射到ProcessDefinition的name属性，引擎不使用这个属性，但是可以在用户界面上显示更人性化的名称。
+						 （我觉得学任何框架，首先找他的十分钟入门版本，练习一遍，对其中不明白的技术看用户指南，去学比较好，而不是一头扎进用户指南。。。。我败了）
+						 接着来演示一个小流程，看xml应该这么写
+						 这个流程是这样的：有一个公司的财务报告人员，每月都要写月度财务报告，然后写完后公司高层的一个人员获取这份报告，并传阅给公司的所有股东。让他们批准
+						 （假装这里有流程图）无启动事件-写入每月财务报告-验证每月财务报告-无终止事件。
+						 xml流程代码：
+						 <definitions id="definitions"
+												  targetNamespace="http://activiti.org/bpmn20"
+												  xmlns:activiti="http://activiti.org/bpmn"
+												  xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">
+												<process id="financialReport" name="Monthly financial report reminder process">
+														  <startEvent id="theStart" />
+														  <sequenceFlow id='flow1' sourceRef='theStart' targetRef='writeReportTask' />
+														  <userTask id="writeReportTask" name="Write monthly financial report" >
+														    <documentation>
+														      Write monthly financial report for publication to shareholders.
+														    </documentation>
+														    <potentialOwner>
+														      <resourceAssignmentExpression>
+														        <formalExpression>accountancy</formalExpression>
+														      </resourceAssignmentExpression>
+														    </potentialOwner>
+														  </userTask>
+														  <sequenceFlow id='flow2' sourceRef='writeReportTask' targetRef='verifyReportTask' />
+														  <userTask id="verifyReportTask" name="Verify monthly financial report" >
+														    <documentation>
+														      Verify monthly financial report composed by the accountancy department.
+														      This financial report is going to be sent to all the company shareholders.
+														    </documentation>
+														    <potentialOwner>
+														      <resourceAssignmentExpression>
+														        <formalExpression>management</formalExpression>
+														      </resourceAssignmentExpression>
+														    </potentialOwner>
+														  </userTask>
+														  <sequenceFlow id='flow3' sourceRef='verifyReportTask' targetRef='theEnd' />
+														  <endEvent id="theEnd" />
+												</process>
+						</definitions>
+						startEvent标签告诉我们这个流程没有启动事件，同时也告诉我们流程的入口点是这里。
+						这个xml有两个userTask，也就是有两个任务，流程有两个节点。
+						第一个userTask是说写月度财务报告，id属性是标识符，name属性随便写
+						documentation是该任务的描述，可以通过任务对象task.getDescription()获取
+						potentialOwner标签是把任务负责人开给候选人 列表。要注意必须指定候选人列表是用户还是组。
+						像xml文档，就把第一个任务分配给会计部。
+						流程的每一个节点通过sequenceFlow标签来指定
 						
+						
+						
+						 
+						
+				
+				
+				教程告一段落，写个示例程序来巩固一下
+				需求：模拟公司的一个假期请求流程
+				首先，建一个流程定义的xml文档：VacationRequest.bpmn20.xml
+							内容是酱紫（查阅本项目自带的VacationRequest.bpmn20.xml文件）。
+					2：部署它，部署就是让Activiti引擎知道它，并把这个流程定义xml解析为可执行的文件，并把部署中添加到数据库中
+							这样在引擎重新启动时，仍能记住所有部署的进程。
+							代码是酱紫的（请参阅Example.java文件）
 				
 					
 				    
