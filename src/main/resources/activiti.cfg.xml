@@ -3,12 +3,27 @@
 							xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"       
 							 xsi:schemaLocation="http://www.springframework.org/schema/beans   
 							 									http://www.springframework.org/schema/beans/spring-beans.xsd">
-  <bean id="processEngineConfiguration" class="  org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-    <property name="jdbcUrl"    value="jdbc:postgresql://localhost:5432/postgres"/>     
-    <property name="jdbcDriver"    value="org.postgresql.Driver"/>     
+    <!--这个配置文件必须包含一个bean名称为processEngineConfiguration。它用来创建工作流引擎 -->
+    <bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
+    <!-- 一般数据库连接设定
+    <property name="jdbcUrl"    value="jdbc:postgresql://localhost:5432/postgres"/>
+    <property name="jdbcDriver"    value="org.postgresql.Driver"/>
     <property name="jdbcUsername"  value="postgres"/>    
-     <property name="jdbcPassword"  value="12345"/>
-    <property name="jobExecutorActivate"   value="false"/>
+     <property name="jdbcPassword"  value="super"/>
+     -->
+    <!-- 工作流引擎开启时，也开启AsyncExecutor -->
+    <property name="asyncExecutorActivate" value="true" />
+    <!--设定流程启动和关闭时的数据库模式设定，默认值是false-->
     <property name="databaseSchemaUpdate" value="true"></property>
+    <property name="dataSource" ref="dataSource"></property>
   </bean>
+
+    <!--数据池连接设定-->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" >
+        <property name="driverClassName" value="org.postgresql.Driver" />
+        <property name="url" value="jdbc:postgresql://localhost:5432/postgres" />
+        <property name="username" value="postgres" />
+        <property name="password" value="super" />
+        <property name="defaultAutoCommit" value="false" />
+    </bean>
 </beans>

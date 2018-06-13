@@ -1,33 +1,356 @@
-  <bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-  以上是用来构建ProcessEngine的bena。有多个class可以采用
- org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration: 单独运行的流程引擎。Activiti会自己处理事务。 默认，数据库只在引擎启动时检测 （如果没有Activiti的表或者表结构不正确就会抛出异常）。
-org.activiti.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration: 单元测试时的辅助类。Activiti会自己控制事务。 默认使用H2内存数据库。数据库表会在引擎启动时创建，关闭时删除。 使用它时，不需要其他配置（除非使用job执行器或邮件功能）。
-org.activiti.spring.SpringProcessEngineConfiguration: 在Spring环境下使用流程引擎。 参考Spring集成章节。
-org.activiti.engine.impl.cfg.JtaProcessEngineConfiguration: 单独运行流程引擎，并使用JTA事务。
-注：没有真正尝试过，事实上，第一个class有尝试，但是结果却没有预料中的报错。
-使用的是h2数据库，即就是刚启动时里面没有表，更没有数据。但是不报错。。。解释:数据库只在引擎启动时检测 （如果没有Activiti的表或者表结构不正确就会抛出异常）。
-原因已解决，请继续查看下去
+# 工作流
+
+# 一：什么是工作流
+
+所谓工作流，顾名思义，就是把整个工作的整个流程串联起来
+
+工作流只是提供了一种思路，具体的实现还是要依赖广大框架的。
+
+目前Java最流行的工作流框架有Activity和jbpm。
+
+该文档主要讲解Activity 6.0的使用
+
+> Activity 其实已经发展到7.0了
+
+#二：Activity的先决条件
+
+1. JDK1.7以上
+
+2. IDE插件，如Eclipse的Activiti Designer 插件，或者IDEA上面的`actiBPM `插件
+
+# 三：快速入门
+
+## 3.1基础环境搭建
+
+官网上下载的zip包有几个可以用于快速入门的war包，直接部署上tomcat上，就可以看到效果了。
+
+用web UI直接进行流程的设计。这里就不讲了
+
+**快速入门步骤**：
+
+1. 首先要新建一个maven项目，然后添加Activity的依赖。
+
+   依赖项可以在该网站上找到`https://www.activiti.org/quick-start`
+
+2. 为你的项目配置下日志配置文件
+
+   ```
+   log4j.rootLogger=DEBUG, ACT
+   log4j.appender.ACT=org.apache.log4j.ConsoleAppender
+   log4j.appender.ACT.layout=org.apache.log4j.PatternLayout
+   log4j.appender.ACT.layout.ConversionPattern= %d{hh:mm:ss,SSS} [%t] %-5p %c %x - %m%n
+   ```
+
+   放在`/src/main/resources/log4j.properties `
+
+3. 开始写程序-main函数
+
+   > 代码就懒的搬上来了，请参阅项目的`com.example.Example`类的`example1`方法
+
+**本节的几个小知识点**
+
+1. Activity支持依赖注入，将在以下的章节讲到
+
+2. Activity有一个数据库脚本，里面记录了有关工作流相关的表的建表语句
+
+   在官网下载的zip包里面的`database/create `里面
+
+   或者找`activiti-engine-5.22.0.jar`里面的`org/activiti/db/create`
+
+3. 有一个配置可以将项目打成一个jar包，然后直接运行jar包就可以看到效果了。
+
+   > 在项目的pom文件就可以看到这段配置。以上
+
+## 3.2：部署一个流程
+
+这一节我们将 部署一个入职流程，这个流程是酱紫的：
+
+如果就业经验大于3年，那么就会发布一个个性化的入职信息，需要录入欢迎入职时间
+
+如果就业经验小于3年，那么会自动将数据和后端系统进行集成。通过脚本或者Java程序
+
+当然，这个就业经验需要我们输入年限
+
+流程我们定义好了，怎么嵌入到工作流呢？
+
+1. 这个时候，我们就需要编写`bpmn`的XML了，这将流程以XML文件的格式展现出来
+
+> xml文件请参阅Onboarding.bpmn20.xml 文件
+
+2. 编写程序执行这个流程，请参阅项目的`com.example.Example`类的方法`test3`方法
+
+# 四：工作流配置
+
+## 4.1：配置文件
+
+在之前的程序中，工作流引擎的配置都是写在Java文件中，这样不利于降低耦合性。本节将介绍一个配置文件。
+
+通过这个配置文件，可以直接创建一个工作流引擎。
+
+这个配置文件的名称叫做：`activiti.cfg.xml `,格式其实跟Spring的bean配置文件一样。
+
+具体可以参照本项目的`activiti.cfg.xml `文件
+
+需要注意的地方1：
+
+该配置文件必须包含一个`processEngineConfiguration `bean，而这个bean可以有由很多的class创建出来。
+
+选择哪一种class，要根据不同的项目而定，具体来说，有下面的class
+
+`org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration `
+单独运行的流程引擎。Activiti会自己处理事务。 默认，数据库只在引擎启动时检测 （如果没有Activiti的表或者表结构不正确就会抛出异常）
+
+`org.activiti.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration `
+单元测试时的辅助类。Activiti会自己控制事务。 默认使用H2内存数据库。数据库表会在引擎启动时创建，关闭时删除。 使用它时，不需要其他配置（除非使用job执行器或邮件功能）
+
+`org.activiti.spring.SpringProcessEngineConfiguration`
+在Spring环境下使用流程引擎。 参考Spring集成章节
+
+`org.activiti.engine.impl.cfg.JtaProcessEngineConfiguration`
+单独运行流程引擎，并使用JTA事务
+
+需要注意的地方2：
+
+上面说的那个`processEngineConfiguration `bean，有几个属性可以指定
+
+1. `databaseTyp`e   ：一般不用设置，工作流获取数据库连接时会自动判断
+   可能的值有`h2, mysql, oracle, postgres, mssql, db2`
+   如果自动检测失败，可能需要手动设定
+2. `databaseSchemaUpdate `：可以指定流程流程启动和关闭时的数据库模式设定，有以下值
+   1. false(默认值):检查数据库表的版本和依赖库的版本， 如果版本不匹配就抛出异常。
+   2. true: 构建流程引擎时，执行检查，如果需要就执行更新。 如果表不存在，就创建。
+   3. create-drop: 构建流程引擎时创建数据库表， 关闭流程引擎时删除这些表。
+
+需要注意的地方3：
+
+其实还可以配置一个JNDI数据源，但是暂时忽略之
+
+## 4.2 ：Job Executor(从版本6开始)
+
+Job Executor是一个管理线程池以激活定时器和其他异步任务的组件。
+
+> 在本教程中，Job Executor就相当于AsyncExecutor ，所以可以这么说。
+>
+> 另外，不想借助Job Executo来实现也是行的，你可以采取其他实现，比如说消息队列
+
+Activiti6唯一可用的Job Executor(作业执行器)是 AsyncExecutor (异步执行器).
+
+与以往的Job Executor相比，新来的 async executor有更高的性能和更便于执行数据库的机能。
+
+另外，如果应用是在JavaEE7下面运行的，可以使用`JSR-236`兼容的`ManagedAsyncJobExecutor`  让容器来管理线程，要启动这个，你需要在activiti.cfg.xml 的配置文件加上这个东西
+
+```
+<bean id="threadFactory" class="org.springframework.jndi.JndiObjectFactoryBean">
+   <property name="jndiName" value="java:jboss/ee/concurrency/factory/default" />
+</bean>
+<bean id="customJobExecutor" class="org.activiti.engine.impl.jobexecutor.ManagedAsyncJobExecutor">
+   <!-- ... -->
+   <property name="threadFactory" ref="threadFactory" />
+   <!-- ... -->
+</bean>
+```
+
+### 4.2.1 激活Job Executor
+
+在默认情况下，工作流引擎启动时AsyncExecutor 并没有启动，所以你需要激活它
+
+在activiti.cfg.xml 配置文件里，如下图所示
+
+```
+ <bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
+   .....
+    <property name="asyncExecutorActivate" value="true" />
+ </bean>
+```
+
+## 4.3 邮件配置
+
+邮件服务是可选的，Activiti支持在流程中发送邮件，但是要实际的发送邮件，需要配置下SMTP的邮件服务器。
+
+//TODO 以后接触到再写下去
+
+## 4.4 ：历史流程服务配置
+
+历史流程服务是可选的。
+
+通过这个配置可以让你调整历史的配置
+
+```
+<property name="history" value="audit" />
+```
+
+配置位置当然在`processEngineConfiguration`的bean里面
+
+还有其他知识，用到了再学。
+
+## 4.5：设置配置中bean的可见性
+
+在默认情况下，你在activiti.cfg.xml里面或者Spring中配置的任何bean，都可以在脚本和表达式中使用。
+
+如果要限制这些bean的可见性，让它们在脚本和表达式中不可见，也不可用。
+
+那么就要在`ProcessEngineConfiguration`  里面配置一个叫``beans`  `属性。
+
+这个属性的数据类型是一个Map，只有在这个map中存在的bean，才能对表达式和脚本中可见。
+
+## 4.6 部署的缓存配置
+
+缓存配置的好处就是所有流程定义都被缓存(当然是解析后)，以避免每次流程定义都需要用到数据库。
+
+默认情况下，这个缓存没有限制。添加配置可以限制
+
+```
+<property name="processDefinitionCacheLimit" value="10" />
+```
+
+当然还是要配置在`ProcessEngineConfiguration`  里面的。
+
+这个配置的值要根据流程定义的总数，以及运行时所有流程实例使用的流程定义的数量
 
 
-配置文件结构
-<?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"        
-							xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"       
-							 xsi:schemaLocation="http://www.springframework.org/schema/beans   
-							 									http://www.springframework.org/schema/beans/spring-beans.xsd">
-  <bean id="processEngineConfiguration" class=" org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-    <property name="jdbcUrl"    value="jdbc:h2:mem:activiti;DB_CLOSE_DELAY=1000"/>     
-  </bean>
+
+
+
+# 五：创建工作流相关表
+
+创建工作流相关的表很简单
+
+步骤如下
+
+1. 添加`activiti-engine.jar`到classpath下,其实就是加依赖啦
+2. 添加数据库驱动jar包
+3. 配置数据库，参阅上面我写的配置教程，就是第四章的`工作流配置文件`
+4. 执行DbSchemaCreate的main方法。
+
+这其中建表的sql语句可以从`activiti-engine.jar`包找到，更多详情可以找第三章`快速入门`看下
+
+这里介绍一下里面sql文件名的格式
+
+`activiti.{db}.{create|drop}.{type}.sql`
+
+其中db是数据库类型，type有以下几种
+
+`engine`:引擎执行所需要的表
+
+`identity`:包含用户，组和用户对组的成员资格相关的表
+
+`history`：历史记录和审计（audit  ）的表，这些表是可选的，当历史等级设置为none时不需要。
+
+> 注意：当历史等级设置为none时也会禁用一些其他功能，比如说任务的注释
+
+> 再次注意：如果你使用的是Mysql5.6.4的版本将不支持时间戳或毫秒级精度的日期。 
+>
+> 更糟糕的是，创建这些数据类型的列时，某个版本的MySQl数据库会抛异常，某些则不会。
+>
+> 一旦要是抛异常了，可以使用其他的建表文件，如常规版本或者带有mysql55的特殊sql文件。
+>
+> mysql55这个文件建出来的表不包含毫秒精度的列类型
+
+# 六：工作流相关的表名解释
+
+activiti工作流创建的数据库表名全都以ACT_开头，第二部分根据表的功能不同而不同。
+
+比如说：
+
+1. ACT_RE_ *这种表名：RE代表存储库。 具有此前缀的表包含静态信息，例如流程定义和流程资源（图像，规则等）。
+2. ACT_RU_ *这种表名：RU代表运行时间。 这些是包含流程实例，用户任务，变量，作业等的运行时数据的运行时表， Activiti仅在流程实例执行期间存储运行时的数据，并在进程实例结束时删除记录。 这样可以使运行时间表小型化。
+3. ACT_ID_ *这种表名：ID代表身份。 这些表包含身份信息，如用户，组等。
+4. ACT_HI_ *：HI代表历史。 这些是包含历史数据的表，例如过去的流程实例，变量，任务等
+5.  ACT_GE_ *：一般数据，用于各种用例。
+
+# 七：数据库升级
+
+默认情况下，在创建流程引擎时，即ProcessEngine对象时会默认检查一遍数据库表版本检查。
+如果版本不一致，抛异常。这时候就需要进行数据库表升级了
+
+> 请注意：在升级前，你必须备份你的数据库表、
+
+怎么升级？
+
+1：将以下配置属性放在activiti.cfg.xml 配置文件里面
+
+```
+<beans >
+	<bean id="processEngineConfiguration" 		class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
+	<!-- ... -->
+	<property name="databaseSchemaUpdate" value="true" />
+	<!-- ... -->
+	</bean>
 </beans>
+```
+
+2：为你的数据库选择合适的驱动程序添加到classpath路径下，升级你项目引用的Activiti类库。
+     并将数据库配置为，指向拥有老版本表的数据库
+3：运行你的Activiti，大概就是先构造一个引擎实例吧，这样就可以升级了。具体的文档说的不是很清楚
+4：作为替代，你也可以在官网下载升级的数据库脚本，然后运行它
+
+# 八：日志配置
+
+在默认情况下，`activiti-engine  `依赖没有` SFL4J-binding` 的jar。
+你需要添加这些jar，以便选择你需要的日志实现。如果没有添加这些实现的日志类库依赖，slf4j将使用默认的`NOP-logge `来记录信息。
+
+在这里，我们假设你使用的是log4j的日志类库来记录日志，那么
+
+```
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>slf4j-log4j12</artifactId>
+</dependency>
+```
+
+OK,这样你就使用了log4j来记录日志了。
+
+
+
+# 九：事件处理
+
+Activiti事件处理机制允许你在工作流引擎中发生事件时得到通知。
+
+可以为特定的事件注册监听器，而不是任何事件发生时都收到通知。
+注册监听器有两种方式
+
+1. 使用APi在运行时添加引擎范围的事件监听器。
+2. 将事件监听器添加到BPMN的特定流程的定义中。
+
+
+
+
+
+
+
+
+
+​	
+
+
+
+
+
+   
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
 这里的property的name可以有多个选择
 databaseType   一般不用设置，工作流获取数据库连接时会自动判断，可能的值有h2, mysql, oracle, postgres, mssql, db2
 databaseSchemaUpdate  设置流程启动和关闭时如何处理数据库表
-	false（默认）：检查数据库表的版本和依赖库的版本， 如果版本不匹配就抛出异常。
+	false（默认）：
 	true: 构建流程引擎时，执行检查，如果需要就执行更新。 如果表不存在，就创建。
 	create-drop: 构建流程引擎时创建数据库表， 关闭流程引擎时删除这些表。
 	PS:设置true的话，并且工作流引擎的class为 org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration不就可以在数据库表不存在的时候不报错吗。。。正解！
 	
-	
+​	
 JNDI数据库的配置
 	要改动数据库的配置每次都要重新打war包发布，太麻烦，jndi帮助你！
 	
@@ -143,52 +466,37 @@ JNDI数据库的配置
         	  
         	  血与泪的教训：JDBC连接符千万不要有空格，不然爆的错误让你怀疑人生
         	 6：创建activiti的数据库表
-					其实最简单的方法难道不是把processEngineConfiguration的class属性设置为	org.activiti.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration
-					或者设置databaseSchemaUpdate属性为true，这样程序一启动就帮你检查表存不存在，存在无视，不存在自动创建。
-					文档提供了别的方法
-					1：添加activiti-engine jar到classpath下
-					2：添加数据库驱动jar包
-					3：配置数据库，参阅上面我写的配置教程
-					4：执行DbSchemaCreate的main方法。
-					你知道这是根据什么sql创建的吗？
-					在你下载activiti的zip包时，里面有一个database文件夹对吧，里面的create文件夹就是创建表的脚本啦，它可是分为好几个数据库的建表脚本
-					另外，你在activiti-engine-x.jar包的org / activiti / db / create也可以找到他
-					经测试，你如果改了jar包里面的sql语句，运行时建表语句也会随之更改
-					讲一下activiti里面sql脚本文件的命名特点吧
-					activiti.mssql.create.engine.sql
-					activiti.mssql.create.history.sql
-					activiti.mssql.create.identity.sql
-					就mssql数据库脚本文件为例
-					identity是包含用户，组和用户组的成员资格的表。这些表是可选的，并且在使用引擎附带的默认身份管理时应使用它们。
-					history   历史：包含历史记录和审计信息的表。可选：当历史级别设置为无时，不需要。请注意，这也将禁用在历史数据库中存储数据的某些功能（例如评论任务）。
-					engine    activiti执行所需的表。必须的
-					敲黑板，划重点！！！使用mysql5.6.4以下版本的同学注意了。mysql5.6.4以下版本不支持以毫秒为单位的时间戳或日期
-					某版本的activiti执行创建列时会爆出异常，有些则不会。。。具体请看官方文档。。。
-			7：activiti创建的数据库表表名解释
-					activiti创建的数据库表名全都以ACT_开头，第二部分根据表的功能不同而不同。比如说
-				    ACT_RE_ *这种表名：RE代表存储库。 具有此前缀的表包含静态信息，例如流程定义和流程资源（图像，规则等）。
-				    ACT_RU_ *这种表名：RU代表运行时间。 这些是包含流程实例，用户任务，变量，作业等的运行时数据的运行时表。
-				    										 Activiti仅在流程实例执行期间存储运行时的数据，并在进程实例结束时删除记录。 这样可以使运行时间表小型化。
-				    ACT_ID_ *这种表名：ID代表身份。 这些表包含身份信息，如用户，组等。
-				    ACT_HI_ *：HI代表历史。 这些是包含历史数据的表，例如过去的流程实例，变量，任务等
-				    ACT_GE_ *：一般数据，用于各种用例。（用例是什么鬼？）
-			8：数据库升级！
-					默认情况下，在创建流程引擎时，即ProcessEngine对象时会默认检查一遍数据库表版本检查。
-					如果版本不一致，抛异常。这时候就需要进行数据库表升级了
-					请注意：在升级前，你必须备份你的数据库表、
-					怎么升级？
-					1：将以下配置属性放在activiti.cfg.xml 配置文件里面
-						<beans >
-						  		<bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
- 						   				<!-- ... -->
-  							 			<property name="databaseSchemaUpdate" value="true" />
-    									<!-- ... -->
-  								</bean>
-					</beans>
-					2：为你的数据库选择合适的驱动程序添加到classpath路径下，升级你项目引用的Activiti类库。并将数据库配置为，指向拥有老版本表的数据库
-					3：运行你的Activiti，大概就是先构造一个引擎实例吧，这样就可以升级了。具体的文档说的不是很清楚
-					4：作为替代，你也可以在官网下载升级的数据库脚本，然后运行it
-				9：Job Executor和Async Executor
+    				其实最简单的方法难道不是把processEngineConfiguration的class属性设置为	org.activiti.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration
+    				或者设置databaseSchemaUpdate属性为true，这样程序一启动就帮你检查表存不存在，存在无视，不存在自动创建。
+    				文档提供了别的方法
+    				1：添加activiti-engine jar到classpath下
+    				2：添加数据库驱动jar包
+    				3：配置数据库，参阅上面我写的配置教程
+    				4：执行DbSchemaCreate的main方法。
+    				你知道这是根据什么sql创建的吗？
+    				在你下载activiti的zip包时，里面有一个database文件夹对吧，里面的create文件夹就是创建表的脚本啦，它可是分为好几个数据库的建表脚本
+    				另外，你在activiti-engine-x.jar包的org / activiti / db / create也可以找到他
+    				经测试，你如果改了jar包里面的sql语句，运行时建表语句也会随之更改
+    				讲一下activiti里面sql脚本文件的命名特点吧
+    				activiti.mssql.create.engine.sql
+    				activiti.mssql.create.history.sql
+    				activiti.mssql.create.identity.sql
+    				就mssql数据库脚本文件为例
+    				identity是包含用户，组和用户组的成员资格的表。这些表是可选的，并且在使用引擎附带的默认身份管理时应使用它们。
+    				history   历史：包含历史记录和审计信息的表。可选：当历史级别设置为无时，不需要。请注意，这也将禁用在历史数据库中存储数据的某些功能（例如评论任务）。
+    				engine    activiti执行所需的表。必须的
+    				敲黑板，划重点！！！使用mysql5.6.4以下版本的同学注意了。mysql5.6.4以下版本不支持以毫秒为单位的时间戳或日期
+    				某版本的activiti执行创建列时会爆出异常，有些则不会。。。具体请看官方文档。。。
+    		7：
+    		8：数据库升级！
+    				默认情况下，在创建流程引擎时，即ProcessEngine对象时会默认检查一遍数据库表版本检查。
+    				如果版本不一致，抛异常。这时候就需要进行数据库表升级了
+    				请注意：在升级前，你必须备份你的数据库表、
+    				怎么升级？
+    				1：将以下配置属性放在activiti.cfg.xml 配置文件里面
+    					
+ 					
+​				9：Job Executor和Async Executor
 					  从 5.17.0版本开始，Activiti添加了一个Async Executor，Async Executor是在Activiti Engine中执行异步作业的一种性能更好的数据库友好方式。
 					   因此建议切换到Async Executor。 默认情况下，旧的Job Executor仍然被使用。 
 									ps：如果你的应用程序在javaee 7下运行，则ManagedJobExecutor和ManagedAsyncJobExecutor可用于让容器管理线程。
@@ -273,12 +581,13 @@ JNDI数据库的配置
 												  Runtimeservice还允许查询流程实例和执行。
 												   Runtimeservice还负责当流程实例等待外部触发器继续执行的操作。
 												   流程实例可以具有多种等待状态，该服务的某些操作可以发给流程示例，以触发流程实例的外部触发器，使之能继续进行流程。
-												   
-				
-				
+
+
+​				
+​				
 				6:TaskService:在Activiti中业务流程定义中的每一个执行节点被称为一个Task，Task都分组在TaskService中，包含
 				查询分配给用户或组的Task
-    			创建新的独立Task。这些是与流程实例无关的Task（纳尼？）
+				创建新的独立Task。这些是与流程实例无关的Task（纳尼？）
    				 操作Task分配给哪个用户或哪个用户以某种方式涉及Task
    				 ?声明并完成Task，声明意味着有人愿意处理该Task，也就意味着该用户将完成该Task
    				 
@@ -295,14 +604,15 @@ JNDI数据库的配置
 				异常部分：一般的异常，没声明却抛出的异常时这个，org.activiti.engine.ActivitiException
 									其他的javadoc都有说明
 									此外还有些异常请参阅官方文档。
-									
-									
+
+
+​									
 				13:流程定义的xml文档解释：
 				1：根元素是definitions元素，在这个元素中，可以定义多个流程，不建议这么做，会增加维护难度。
 						一个空流程定义如下所示。注意：根元素至少有xmlns和targetNamespace属性。其中targetNamespace用于分辨各类的流程。可以是任何值
 						xmlns也可以是：xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 														xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL
-                 									   http://www.omg.org/spec/BPMN/2.0/20100501/BPMN20.xsd
+	             									   http://www.omg.org/spec/BPMN/2.0/20100501/BPMN20.xsd
 						<definitions
  								 xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
  								 xmlns:activiti="http://activiti.org/bpmn"
@@ -363,12 +673,12 @@ JNDI数据库的配置
 						像xml文档，就把第一个任务分配给会计部。
 						流程的每一个节点通过sequenceFlow标签来指定
 						
-						
-						
-						 
-						
-				
-				
+​						
+​						
+​						 
+​						
+​				
+​				
 				教程告一段落，写个示例程序来巩固一下
 				需求：模拟公司的一个假期请求流程
 				首先，建一个流程定义的xml文档：VacationRequest.bpmn20.xml
@@ -376,9 +686,10 @@ JNDI数据库的配置
 					2：部署它，部署就是让Activiti引擎知道它，并把这个流程定义xml解析为可执行的文件，并把部署中添加到数据库中
 							这样在引擎重新启动时，仍能记住所有部署的进程。
 							代码是酱紫的（请参阅Example.java文件）
-				
-					
-				    
-				
-					
-					
+
+
+​					
+​				    
+​				
+​					
+​					
