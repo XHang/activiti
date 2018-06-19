@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name = "log4jPath">D://1.log</Property>
+    </Properties>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout charset="utf-8" pattern="%d{yyyy/MM/dd HH:mm:ss} %C:%m %n"/>
+        </Console>
+        <File name="File" fileName="${log4jPath}">
+            <PatternLayout>
+                <pattern> %d %p %C{1.} [%t] %m%n</pattern>
+            </PatternLayout>
+        </File>
+    </Appenders>
+    <Loggers>
+        <Root level="debug">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+    <script>
+    </script>
+</Configuration>

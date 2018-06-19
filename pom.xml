@@ -21,11 +21,16 @@
   		<version>1.7.21</version>
   	</dependency>
   	<!-- 基于slf4jApi的log4j12 -->
-  	<dependency>
-  		<groupId>org.slf4j</groupId>
-  		<artifactId>slf4j-log4j12</artifactId>
-  		<version>1.7.21</version>
-  	</dependency>
+       <dependency> <!-- 桥接：告诉Slf4j使用Log4j2 -->
+           <groupId>org.apache.logging.log4j</groupId>
+           <artifactId>log4j-slf4j-impl</artifactId>
+           <version>2.2</version>
+       </dependency>
+       <dependency>
+           <groupId>org.apache.logging.log4j</groupId>
+           <artifactId>log4j-core</artifactId>
+           <version>2.2</version>
+       </dependency>
   	<!-- H2数据库 -->
   	<dependency>
   		<groupId>com.h2database</groupId>
